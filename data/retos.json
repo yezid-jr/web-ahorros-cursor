@@ -1,0 +1,116 @@
+{
+  "retos": [
+    {
+      "id": 1,
+      "descripcion": "Cocinar juntos una comida especial sin gastar más de $50.000",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 2,
+      "descripcion": "Hacer una caminata o paseo gratis en un parque",
+      "tipo": "gratis"
+    },
+    {
+      "id": 3,
+      "descripcion": "Ahorrar $100.000 extra este mes",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 4,
+      "descripcion": "Hacer una noche de películas en casa con palomitas caseras",
+      "tipo": "gratis"
+    },
+    {
+      "id": 5,
+      "descripcion": "No comer fuera durante una semana completa",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 6,
+      "descripcion": "Hacer un picnic en casa con comida preparada juntos",
+      "tipo": "gratis"
+    },
+    {
+      "id": 7,
+      "descripcion": "Ahorrar $200.000 extra este mes",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 8,
+      "descripcion": "Hacer una sesión de ejercicios en casa juntos",
+      "tipo": "gratis"
+    },
+    {
+      "id": 9,
+      "descripcion": "No comprar nada innecesario durante 10 días",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 10,
+      "descripcion": "Hacer una noche de juegos de mesa en casa",
+      "tipo": "gratis"
+    },
+    {
+      "id": 11,
+      "descripcion": "Ahorrar $300.000 extra este mes",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 12,
+      "descripcion": "Hacer una sesión de spa casero con mascarillas y relajación",
+      "tipo": "gratis"
+    },
+    {
+      "id": 13,
+      "descripcion": "Preparar el almuerzo para toda la semana el domingo",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 14,
+      "descripcion": "Hacer una sesión de lectura juntos",
+      "tipo": "gratis"
+    },
+    {
+      "id": 15,
+      "descripcion": "Ahorrar $500.000 extra este mes",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 16,
+      "descripcion": "Hacer una noche de karaoke en casa",
+      "tipo": "gratis"
+    },
+    {
+      "id": 17,
+      "descripcion": "No usar delivery durante 2 semanas",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 18,
+      "descripcion": "Hacer una sesión de yoga o meditación juntos",
+      "tipo": "gratis"
+    },
+    {
+      "id": 19,
+      "descripcion": "Ahorrar $1.000.000 extra este mes",
+      "tipo": "ahorro"
+    },
+    {
+      "id": 20,
+      "descripcion": "Hacer una noche de fotos y recuerdos juntos",
+      "tipo": "gratis"
+    }
+  ],
+  "penitencias": [
+    "Lavar los platos durante una semana",
+    "Hacer el desayuno en la cama el próximo fin de semana",
+    "Dar un masaje de 30 minutos",
+    "Preparar la comida favorita de la pareja",
+    "Hacer todas las compras del supermercado",
+    "Limpiar toda la casa sin ayuda",
+    "Organizar una cita romántica sorpresa",
+    "Escribir una carta de amor",
+    "Hacer el desayuno todos los días durante una semana",
+    "Planear y ejecutar una actividad que le guste a la pareja"
+  ]
+}
