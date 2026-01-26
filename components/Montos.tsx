@@ -34,45 +34,78 @@ export default function Montos({ userId }: { userId: number }) {
   };
 
   const handleSelectMonto = async (montoId: number) => {
-    try {
-      await axios.put(`${API_URL}/montos/${montoId}/select`);
+  try {
+    
+    await axios.put(`${API_URL}/montos/${montoId}/select?user_id=${userId}`);
+    
+    const monto = montos.find((m) => m.id === montoId);
+    
+    if (monto) {
+      const ahorroData = {
+        user_id: userId,
+        monto_id: montoId,
+        amount: monto.amount,
+      };
       
-      // Crear ahorro
-      const monto = montos.find((m) => m.id === montoId);
-      if (monto) {
-        await axios.post(`${API_URL}/ahorros`, {
-          user_id: userId,
-          monto_id: montoId,
-          amount: monto.amount,
-        });
-      }
-
-      setSelectedMonto(montoId);
-      setTimeout(() => {
-        setSelectedMonto(null);
-        fetchMontos();
-      }, 2000);
-    } catch (error) {
-      console.error("Error selecting monto:", error);
+      const response = await axios.post(`${API_URL}/ahorros`, ahorroData);
+      console.log("Respuesta del servidor:", response.data);
+    } else {
+      console.error("ERROR: No se encontró el monto");
     }
-  };
+
+    setSelectedMonto(montoId);
+    setTimeout(() => {
+      setSelectedMonto(null);
+      fetchMontos();
+    }, 2000);
+  } catch (error) {
+    console.error("Error:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Response data:", error.response?.data);
+      console.error("Status:", error.response?.status);
+    }
+  }
+};
 
   const handleCreateAndSelectMonto = async (amount: number) => {
-    try {
-      // Crear monto
-      const createResponse = await axios.post(`${API_URL}/montos`, {
-        amount,
-        user_id: userId,
-      });
-      
-      const newMonto = createResponse.data;
-      
-      // Seleccionar y crear ahorro
-      await handleSelectMonto(newMonto.id);
-    } catch (error) {
-      console.error("Error creating and selecting monto:", error);
+  try {
+    
+    // Crear monto
+    const createResponse = await axios.post(`${API_URL}/montos`, {
+      amount,
+      user_id: userId,
+    });
+    
+    const newMonto = createResponse.data;
+    
+    // Marcar como seleccionado
+    await axios.put(`${API_URL}/montos/${newMonto.id}/select?user_id=${userId}`);
+    
+    // Crear ahorro directamente con los datos del monto recién creado
+    const ahorroData = {
+      user_id: userId,
+      monto_id: newMonto.id,
+      amount: newMonto.amount,
+    };
+    
+    const ahorroResponse = await axios.post(`${API_URL}/ahorros`, ahorroData);
+    console.log("Ahorro creado:", ahorroResponse.data);
+    
+    // Mostrar confirmación
+    setSelectedMonto(newMonto.id);
+    setTimeout(() => {
+      setSelectedMonto(null);
+      fetchMontos();
+    }, 2000);
+    
+  } catch (error) {
+    console.error("Error:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Response data:", error.response?.data);
+      console.error("Status:", error.response?.status);
     }
-  };
+  }
+};
 
   // Agrupar montos por selección
   const montosSeleccionados = montos.filter((m) => m.selected);

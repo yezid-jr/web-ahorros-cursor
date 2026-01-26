@@ -43,9 +43,11 @@ function DashboardContent() {
       <div className={`min-h-screen ${bgColor} pb-20`}>
         <div className="container mx-auto px-4 py-8">
           <div className="text-center mb-8">
-            <h1 className={`text-3xl font-bold ${textColor} mb-2`}>
+            <h1 className={`text-3xl font-bold ${textColor} mb-6`}>
               Dashboard {user?.name || ""}
             </h1>
+          </div>
+          <div className="w-full flex justify-center mb-8">
             <Termometro userId={userId} />
           </div>
 

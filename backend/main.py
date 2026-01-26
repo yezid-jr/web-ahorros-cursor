@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, func, extract
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -166,12 +166,15 @@ def get_montos(db: Session = Depends(get_db)):
     return db.query(Monto).all()
 
 @app.put("/montos/{monto_id}/select")
-def select_monto(monto_id: int, db: Session = Depends(get_db)):
+def select_monto(monto_id: int, user_id: int = Query(...), db: Session = Depends(get_db)):
     monto = db.query(Monto).filter(Monto.id == monto_id).first()
     if not monto:
         raise HTTPException(status_code=404, detail="Monto not found")
+    
+    # Marcar como seleccionado
     monto.selected = True
     db.commit()
+    
     return {"message": "Monto selected"}
 
 @app.post("/ahorros", response_model=AhorroResponse)
@@ -189,33 +192,63 @@ def create_ahorro(ahorro: AhorroCreate, db: Session = Depends(get_db)):
 @app.get("/ahorros", response_model=List[AhorroResponse])
 def get_ahorros(db: Session = Depends(get_db)):
     return db.query(Ahorro).all()
+# Agrega este endpoint temporal para debug
+@app.get("/debug/ahorros")
+def debug_ahorros(db: Session = Depends(get_db)):
+    ahorros = db.query(Ahorro).all()
+    return {
+        "count": len(ahorros),
+        "ahorros": [{"id": a.id, "amount": a.amount, "date": str(a.date)} for a in ahorros]
+    }
+
+@app.post("/test/add-ahorro")
+def test_add_ahorro(db: Session = Depends(get_db)):
+    # Crear un ahorro de prueba
+    ahorro = Ahorro(
+        user_id=1,
+        monto_id=1,
+        amount=500000.0,
+        date=datetime.now()
+    )
+    db.add(ahorro)
+    db.commit()
+    return {"message": "Ahorro de prueba creado", "amount": 500000.0}
 
 @app.get("/estadisticas", response_model=EstadisticasResponse)
 def get_estadisticas(db: Session = Depends(get_db)):
     # Total general
-    total_general = db.query(Ahorro).with_entities(
-        db.func.sum(Ahorro.amount)
-    ).scalar() or 0.0
+    total_general_result = db.query(func.sum(Ahorro.amount)).scalar()
+    total_general = float(total_general_result) if total_general_result is not None else 0.0
     
-    # Total del mes actual
+    # Total del mes actual - ARREGLADO para SQLite
     now = datetime.now()
-    total_mes = db.query(Ahorro).filter(
-        db.func.strftime('%Y-%m', Ahorro.date) == now.strftime('%Y-%m')
-    ).with_entities(db.func.sum(Ahorro.amount)).scalar() or 0.0
+    primer_dia_mes = datetime(now.year, now.month, 1)
     
-    # Objetivo del mes (puedes ajustar esto según tu lógica)
-    objetivo_mes = 2000000.0  # 2 millones por mes para llegar a 20M en 10 meses
-    faltante_mes = max(0, objetivo_mes - total_mes)
+    # Calcular el último día del mes
+    if now.month == 12:
+        ultimo_dia_mes = datetime(now.year + 1, 1, 1)
+    else:
+        ultimo_dia_mes = datetime(now.year, now.month + 1, 1)
+    
+    total_mes_result = db.query(func.sum(Ahorro.amount)).filter(
+        Ahorro.date >= primer_dia_mes,
+        Ahorro.date < ultimo_dia_mes
+    ).scalar()
+    total_mes = float(total_mes_result) if total_mes_result is not None else 0.0
+    
+    # Objetivo del mes
+    objetivo_mes = 2000000.0
+    faltante_mes = max(0.0, objetivo_mes - total_mes)
     
     # Objetivo actual basado en el total general
     objetivos = [1000000, 2000000, 3000000, 5000000, 7000000, 12000000, 20000000]
-    objetivo_actual = 20000000
+    objetivo_actual = 20000000.0
     for obj in objetivos:
         if total_general < obj:
-            objetivo_actual = obj
+            objetivo_actual = float(obj)
             break
     
-    progreso_porcentaje = (total_general / objetivo_actual * 100) if objetivo_actual > 0 else 0
+    progreso_porcentaje = (total_general / objetivo_actual * 100) if objetivo_actual > 0 else 0.0
     
     return EstadisticasResponse(
         total_mes=total_mes,

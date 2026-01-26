@@ -38,7 +38,7 @@ export default function Termometro({ userId }: { userId: number }) {
   const objetivoActual = estadisticas.objetivo_actual;
 
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center mt-8 w-full">
       <div className="text-center mb-4">
         <p className="text-2xl font-bold text-gray-800">
           ${estadisticas.total_general.toLocaleString("es-CO")}
@@ -49,7 +49,7 @@ export default function Termometro({ userId }: { userId: number }) {
       </div>
 
       {/* Termómetro */}
-      <div className="relative w-24 h-80 bg-gray-200 rounded-full border-4 border-gray-300 overflow-hidden">
+      <div className="relative w-24 h-80 bg-gray-200 rounded-full border-4 border-gray-300 overflow-hidden mx-auto mb-12">
         {/* Líneas de objetivos */}
         {objetivos.map((obj, index) => {
           if (obj > objetivoActual) return null;
@@ -86,9 +86,9 @@ export default function Termometro({ userId }: { userId: number }) {
         ></div>
       </div>
 
-      <div className="mt-12 text-center">
+      <div className="mt-4 text-center">
         <div className="text-lg font-semibold text-gray-700">
-          {porcentaje.toFixed(1)}% completado
+          {porcentaje.toFixed(1)}%
         </div>
       </div>
     </div>
