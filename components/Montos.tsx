@@ -120,14 +120,14 @@ export default function Montos({ userId }: { userId: number }) {
 
   return (
     <div className="max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        💵 Montos
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">
+        Montos
       </h2>
 
       {/* Montos seleccionados */}
       {montosSeleccionados.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Montos Seleccionados
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -147,7 +147,7 @@ export default function Montos({ userId }: { userId: number }) {
 
       {/* Montos disponibles */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-700 mb-3">
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
           Seleccionar Monto
         </h3>
         <div className="grid grid-cols-2 gap-3">
@@ -155,9 +155,9 @@ export default function Montos({ userId }: { userId: number }) {
             <button
               key={amount}
               onClick={() => handleCreateAndSelectMonto(amount)}
-              className="bg-white border-2 border-gray-300 hover:border-blue-500 rounded-xl p-4 text-center transition-all duration-200 transform hover:scale-105 shadow-md"
+              className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 rounded-xl p-4 text-center transition-all duration-200 transform hover:scale-105 shadow-md"
             >
-              <p className="text-xl font-bold text-gray-800">
+              <p className="text-xl font-bold text-gray-800 dark:text-white">
                 ${amount.toLocaleString("es-CO")}
               </p>
             </button>

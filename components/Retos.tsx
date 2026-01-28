@@ -121,36 +121,36 @@ export default function Retos({ userId }: { userId: number }) {
 
   return (
     <div className="max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        🎲 Retos
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">
+        Retos
       </h2>
 
       {retoActual ? (
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-6">
           <div className="text-center mb-4">
-            <p className="text-sm text-gray-600 mb-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
               Reto del {new Date(retoActual.date).toLocaleDateString("es-CO")}
             </p>
-            <h3 className="text-xl font-bold text-gray-800 mb-4">
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
               {retoActual.description || retoActual.descripcion}
             </h3>
           </div>
 
           <div className="space-y-3 mb-4">
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-              <span>Persona 1</span>
+            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <span className="text-gray-800 dark:text-gray-200">Persona 1</span>
               {retoActual.completed_user1 ? (
-                <span className="text-green-600 font-bold">✓ Completado</span>
+                <span className="text-green-600 dark:text-green-400 font-bold">✓ Completado</span>
               ) : (
-                <span className="text-gray-500">Pendiente</span>
+                <span className="text-gray-500 dark:text-gray-400">Pendiente</span>
               )}
             </div>
-            <div className="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
-              <span>Persona 2</span>
+            <div className="flex items-center justify-between p-3 bg-pink-50 dark:bg-pink-900/30 rounded-lg">
+              <span className="text-gray-800 dark:text-gray-200">Persona 2</span>
               {retoActual.completed_user2 ? (
-                <span className="text-green-600 font-bold">✓ Completado</span>
+                <span className="text-green-600 dark:text-green-400 font-bold">✓ Completado</span>
               ) : (
-                <span className="text-gray-500">Pendiente</span>
+                <span className="text-gray-500 dark:text-gray-400">Pendiente</span>
               )}
             </div>
           </div>
@@ -158,38 +158,38 @@ export default function Retos({ userId }: { userId: number }) {
           {status === "pending" && (
             <button
               onClick={handleCompleteReto}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200"
+              className="w-full bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200"
             >
               Marcar como Completado
             </button>
           )}
 
           {status === "waiting_partner" && (
-            <div className="text-center p-4 bg-yellow-50 rounded-xl">
-              <p className="text-gray-700">
+            <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-xl">
+              <p className="text-gray-700 dark:text-yellow-200">
                 Esperando que tu pareja complete el reto
               </p>
             </div>
           )}
 
           {status === "completed" && (
-            <div className="text-center p-4 bg-green-50 rounded-xl">
-              <p className="text-green-700 font-bold">
+            <div className="text-center p-4 bg-green-50 dark:bg-green-900/30 rounded-xl">
+              <p className="text-green-700 dark:text-green-300 font-bold">
                 ¡Reto completado por ambos! 🎉
               </p>
             </div>
           )}
 
           {penitencia && (
-            <div className="mt-4 p-4 bg-red-50 rounded-xl border-2 border-red-300">
-              <p className="text-red-700 font-bold mb-2">⚠️ Penitencia:</p>
-              <p className="text-red-600">{penitencia}</p>
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/30 rounded-xl border-2 border-red-300 dark:border-red-700">
+              <p className="text-red-700 dark:text-red-300 font-bold mb-2">⚠️ Penitencia:</p>
+              <p className="text-red-600 dark:text-red-200">{penitencia}</p>
             </div>
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
-          <p className="text-gray-600">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center">
+          <p className="text-gray-600 dark:text-gray-400">
             No hay retos activos en este momento. Los retos aparecen el día 1 y
             15 de cada mes.
           </p>
@@ -199,32 +199,32 @@ export default function Retos({ userId }: { userId: number }) {
       {/* Historial de retos */}
       {retos.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Historial de Retos
           </h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {retos.slice(0, 5).map((reto) => (
               <div
                 key={reto.id}
-                className="bg-white rounded-lg p-3 shadow-md"
+                className="bg-white dark:bg-gray-700 rounded-lg p-3 shadow-md"
               >
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                   {new Date(reto.date).toLocaleDateString("es-CO")}
                 </p>
-                <p className="text-sm font-medium text-gray-800">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                   {reto.description}
                 </p>
                 <div className="flex items-center space-x-2 mt-2">
                   <span
                     className={`text-xs ${
-                      reto.completed_user1 ? "text-green-600" : "text-gray-400"
+                      reto.completed_user1 ? "text-green-600 dark:text-green-400" : "text-gray-400"
                     }`}
                   >
                     P1: {reto.completed_user1 ? "✓" : "○"}
                   </span>
                   <span
                     className={`text-xs ${
-                      reto.completed_user2 ? "text-green-600" : "text-gray-400"
+                      reto.completed_user2 ? "text-green-600 dark:text-green-400" : "text-gray-400"
                     }`}
                   >
                     P2: {reto.completed_user2 ? "✓" : "○"}

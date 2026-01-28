@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, func, extract
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, extract, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, date
 import os
+
 
 # Database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./ahorro.db"
@@ -260,28 +261,40 @@ def get_estadisticas(db: Session = Depends(get_db)):
 
 @app.get("/objetivos", response_model=List[ObjetivoResponse])
 def get_objetivos(db: Session = Depends(get_db)):
+
+    # 1️⃣ Obtener objetivos existentes
     objetivos = db.query(Objetivo).all()
+
+    # 2️⃣ Si no existen, crearlos
     if not objetivos:
-        # Crear objetivos iniciales si no existen
-        objetivos_amounts = [1000000, 2000000, 3000000, 5000000, 7000000, 12000000, 20000000]
+        objetivos_amounts = [
+            1_000_000,
+            2_000_000,
+            3_000_000,
+            5_000_000,
+            7_000_000,
+            12_000_000,
+            20_000_000
+        ]
+
         for amount in objetivos_amounts:
-            objetivo = Objetivo(amount=amount)
-            db.add(objetivo)
+            db.add(Objetivo(amount=amount))
+
         db.commit()
         objetivos = db.query(Objetivo).all()
-    
-    # Actualizar objetivos completados basado en el total
-    total_general = db.query(Ahorro).with_entities(
-        db.func.sum(Ahorro.amount)
-    ).scalar() or 0.0
-    
+
+    # 3️⃣ Calcular total ahorrado
+    total_general = db.query(func.sum(Ahorro.amount)).scalar() or 0
+
+    # 4️⃣ Marcar objetivos completados
     for objetivo in objetivos:
         if total_general >= objetivo.amount and not objetivo.completed:
             objetivo.completed = True
             objetivo.completed_at = datetime.utcnow()
-    
+
     db.commit()
-    return db.query(Objetivo).all()
+
+    return objetivos
 
 @app.get("/retos", response_model=List[RetoResponse])
 def get_retos(db: Session = Depends(get_db)):

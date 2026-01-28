@@ -3,8 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --person1-color: #3B82F6;
-  --person2-color: #EC4899;
+  --person1-color: #3b82f6;
+  --person1-color-light: #93c5fd;
+  --person1-color-dark: #1e40af;
+  --person1-bg: #eff6ff;
+  
+  --person2-color: #ec4899;
+  --person2-color-light: #f9a8d4;
+  --person2-color-dark: #be185d;
+  --person2-bg: #fdf2f8;
+  
+  /* Colores para dark mode */
+  --dark-bg: #111827;
+  --dark-person1-text: #93c5fd;
+  --dark-person2-text: #f9a8d4;
+  --dark-person1-button: #0e224e;
+  --dark-person1-button-hover: #1d4ed8;
+  --dark-person2-button: #db2777;
+  --dark-person2-button-hover: #be185d;
 }
 
 body {
@@ -19,4 +35,65 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+@layer utilities {
+  /* Backgrounds light mode */
+  .bg-person1 {
+    background-color: var(--person1-bg);
+  }
+  .bg-person2 {
+    background-color: var(--person2-bg);
+  }
+  
+  /* Backgrounds dark mode */
+  .dark .bg-person1,
+  .dark .bg-person2 {
+    background-color: var(--dark-bg);
+  }
+  
+  /* Botones person1 */
+  .bg-person1-color {
+    background-color: var(--person1-color);
+  }
+  .dark .bg-person1-color {
+    background-color: var(--dark-person1-button);
+  }
+  
+  .hover\:bg-person1-dark:hover {
+    background-color: var(--person1-color-dark);
+  }
+  .dark .hover\:bg-person1-dark:hover {
+    background-color: var(--dark-person1-button-hover);
+  }
+  
+  /* Botones person2 */
+  .bg-person2-color {
+    background-color: var(--person2-color);
+  }
+  .dark .bg-person2-color {
+    background-color: var(--dark-person2-button);
+  }
+  
+  .hover\:bg-person2-dark:hover {
+    background-color: var(--person2-color-dark);
+  }
+  .dark .hover\:bg-person2-dark:hover {
+    background-color: var(--dark-person2-button-hover);
+  }
+  
+  /* Textos */
+  .text-person1-dark {
+    color: var(--person1-color-dark);
+  }
+  .dark .text-person1-dark {
+    color: var(--dark-person1-text);
+  }
+  
+  .text-person2-dark {
+    color: var(--person2-color-dark);
+  }
+  .dark .text-person2-dark {
+    color: var(--dark-person2-text);
+  }
 }

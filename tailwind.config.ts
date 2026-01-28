@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,8 +11,8 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          person1: "#3B82F6", // Azul para persona 1
-          person2: "#EC4899", // Rosa para persona 2
+          person1: "var(--primary-person1)", // Azul para persona 1
+          person2: "var(--primary-person2)", // Rosa para persona 2
         },
       },
     },

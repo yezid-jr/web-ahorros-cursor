@@ -29,7 +29,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-pink-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
         <h1 className="text-4xl font-bold text-gray-800 mb-4">
-          💰 Ahorro 2026
+          Ahorro 2026
         </h1>
         <p className="text-gray-600 mb-8 text-lg">
           Juntos hacia nuestros objetivos
