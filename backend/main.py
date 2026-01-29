@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, date
+from datetime import datetime, timedelta
+from sqlalchemy import and_, or_, func
+from random import choice
 import os
 
 
@@ -109,6 +112,12 @@ class EstadisticasResponse(BaseModel):
     total_general: float
     objetivo_actual: float
     progreso_porcentaje: float
+
+class Penitencia(Base):
+    __tablename__ = "penitencias"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String, nullable=False)
 
 # FastAPI app
 app = FastAPI(title="Ahorro 2026 API")
@@ -298,36 +307,109 @@ def get_objetivos(db: Session = Depends(get_db)):
 
 @app.get("/retos", response_model=List[RetoResponse])
 def get_retos(db: Session = Depends(get_db)):
-    return db.query(Reto).order_by(Reto.date.desc()).all()
+    """Obtener historial de retos COMPLETADOS o EXPIRADOS (solo los que fueron activados y ya terminaron)"""
+    now = datetime.now()
+    
+    # Obtener retos que:
+    # 1. Tienen fecha asignada (fueron activados)
+    # 2. Y que ya NO son el reto actual (pasaron más de 24 horas O fueron completados por ambos)
+    retos_historial = db.query(Reto).filter(
+        and_(
+            Reto.date.isnot(None),  # Fueron activados
+            or_(
+                Reto.date < now - timedelta(hours=24),  # Ya pasaron 24 horas
+                and_(  # O ambos completaron
+                    Reto.completed_user1 == True,
+                    Reto.completed_user2 == True
+                )
+            )
+        )
+    ).order_by(Reto.date.desc()).all()
+    
+    return retos_historial
 
 @app.get("/retos/actual")
 def get_reto_actual(db: Session = Depends(get_db)):
-    from datetime import datetime, timedelta
-    today = datetime.now()
-    day = today.day
+    """Obtener el reto activo actual (si existe)"""
+    now = datetime.now()
     
-    # Retos se activan el día 1 y 15
-    if day == 1 or day == 15:
-        # Buscar reto para hoy
-        reto = db.query(Reto).filter(
-            db.func.date(Reto.date) == today.date()
-        ).first()
-        
-        if not reto:
-            return {"reto": None, "message": "No hay reto activo"}
-        
-        return {"reto": reto, "message": "Reto activo"}
+    # Buscar reto activo: creado hace menos de 24 horas y no completado por ambos
+    reto = db.query(Reto).filter(
+        and_(
+            Reto.date.isnot(None),  # Tiene fecha asignada
+            Reto.date >= now - timedelta(hours=24),  # Creado hace menos de 24 horas
+            or_(
+                Reto.completed_user1 == False,
+                Reto.completed_user2 == False
+            )
+        )
+    ).order_by(Reto.date.desc()).first()
     
-    return {"reto": None, "message": "No es día 1 o 15"}
+    if reto:
+        return {"reto": reto}
+    
+    return {"reto": None}
+
+@app.get("/retos/disponibles")
+def get_retos_disponibles(db: Session = Depends(get_db)):
+    """Obtener retos que aún no han sido usados"""
+    # Obtener IDs de retos ya usados (que tienen fecha)
+    retos_usados_ids = db.query(Reto.id).filter(Reto.date.isnot(None)).all()
+    retos_usados_ids = [r[0] for r in retos_usados_ids]
+    
+    # Obtener retos disponibles (sin fecha)
+    retos_disponibles = db.query(Reto).filter(
+        and_(
+            Reto.date.is_(None),
+            ~Reto.id.in_(retos_usados_ids) if retos_usados_ids else True
+        )
+    ).all()
+    
+    return {"retos_disponibles": retos_disponibles, "total": len(retos_disponibles)}
+
+@app.post("/retos/activar")
+def activar_reto_aleatorio(db: Session = Depends(get_db)):
+    """Activar un reto aleatorio (asignarle fecha actual)"""
+    now = datetime.now()
+    
+    # Verificar si ya existe un reto activo
+    reto_activo = db.query(Reto).filter(
+        and_(
+            Reto.date.isnot(None),
+            Reto.date >= now - timedelta(hours=24)
+        )
+    ).first()
+    
+    if reto_activo:
+        return {"message": "Ya existe un reto activo", "reto": reto_activo}
+    
+    # Obtener retos disponibles (sin fecha asignada)
+    retos_disponibles = db.query(Reto).filter(Reto.date.is_(None)).all()
+    
+    if not retos_disponibles:
+        raise HTTPException(status_code=404, detail="No hay retos disponibles")
+    
+    # Seleccionar uno aleatorio
+    reto_seleccionado = choice(retos_disponibles)
+    
+    # Activarlo asignándole la fecha actual
+    reto_seleccionado.date = now
+    reto_seleccionado.completed_user1 = False
+    reto_seleccionado.completed_user2 = False
+    reto_seleccionado.penitencia_applied = False
+    
+    db.commit()
+    db.refresh(reto_seleccionado)
+    
+    return {"message": "Reto activado", "reto": reto_seleccionado}
 
 @app.post("/retos/crear")
-def crear_reto(description: str = Query(..., description="Descripción del reto"), db: Session = Depends(get_db)):
-    from datetime import datetime
-    today = datetime.now()
-    
+def crear_reto(description: str = Query(...), tipo: str = Query("ahorro"), db: Session = Depends(get_db)):
+    """Crear un nuevo reto en el pool (sin fecha asignada)"""
     reto = Reto(
         description=description,
-        date=today,
+        tipo=tipo,
+        date=None,  # Sin fecha = disponible para usar
         completed_user1=False,
         completed_user2=False,
         penitencia_applied=False
@@ -339,17 +421,60 @@ def crear_reto(description: str = Query(..., description="Descripción del reto"
 
 @app.post("/retos/{reto_id}/complete")
 def complete_reto(reto_id: int, user_id: int = Query(...), db: Session = Depends(get_db)):
+    """Marcar reto como completado por un usuario"""
     reto = db.query(Reto).filter(Reto.id == reto_id).first()
     if not reto:
         raise HTTPException(status_code=404, detail="Reto not found")
+    
+    # Verificar que el reto no haya expirado (24 horas)
+    if reto.date:
+        tiempo_limite = reto.date + timedelta(hours=24)
+        if datetime.now() > tiempo_limite:
+            raise HTTPException(status_code=400, detail="El reto ha expirado")
     
     if user_id == 1:
         reto.completed_user1 = True
     elif user_id == 2:
         reto.completed_user2 = True
+    else:
+        raise HTTPException(status_code=400, detail="Usuario inválido")
     
     db.commit()
-    return {"message": "Reto completed"}
+    db.refresh(reto)
+    
+    return {
+        "message": "Reto completado",
+        "reto": reto,
+        "ambos_completados": reto.completed_user1 and reto.completed_user2
+    }
+
+@app.post("/retos/{reto_id}/aplicar-penitencia")
+def aplicar_penitencia(reto_id: int, db: Session = Depends(get_db)):
+    """Marcar que se aplicó penitencia al reto"""
+    reto = db.query(Reto).filter(Reto.id == reto_id).first()
+    if not reto:
+        raise HTTPException(status_code=404, detail="Reto not found")
+    
+    reto.penitencia_applied = True
+    db.commit()
+    
+    return {"message": "Penitencia aplicada"}
+
+@app.get("/penitencias")
+def get_penitencias(db: Session = Depends(get_db)):
+    """Obtener todas las penitencias disponibles"""
+    penitencias = db.query(Penitencia).all()
+    return {"penitencias": [p.description for p in penitencias]}
+
+@app.get("/penitencias/random")
+def get_penitencia_aleatoria(db: Session = Depends(get_db)):
+    """Obtener una penitencia aleatoria"""
+    penitencias = db.query(Penitencia).all()
+    if not penitencias:
+        raise HTTPException(status_code=404, detail="No hay penitencias disponibles")
+    
+    penitencia = choice(penitencias)
+    return {"penitencia": penitencia.description}
 
 @app.post("/init")
 def init_db(db: Session = Depends(get_db)):

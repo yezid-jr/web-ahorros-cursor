@@ -33,7 +33,7 @@ export default function Termometro({ userId }: { userId: number }) {
     if (estadisticas) {
       const targetPercentaje = Math.min(estadisticas.progreso_porcentaje, 100);
       let currentPercentaje = 0;
-      const increment = targetPercentaje / 30;
+      const increment = targetPercentaje / 20;
 
       const animationInterval = setInterval(() => {
         currentPercentaje += increment;
@@ -62,15 +62,15 @@ export default function Termometro({ userId }: { userId: number }) {
     : "from-pink-500 to-rose-400";
 
   return (
-    <div className="min-h-screen">
+    <div className="flex flex-col items-center p-12">
       {/* Termómetro minimalista */}
       <div
-        className="flex flex-col items-center cursor-pointer"
+        className="relative flex flex-col items-center cursor-pointer py-8"
         onClick={() => setShowPercentage(!showPercentage)}
       >
         {/* Indicador de porcentaje al hacer click */}
         {showPercentage && (
-          <div className="mb-6 px-6 py-3 rounded-full bg-white dark:bg-gray-800 shadow-lg border-2 border-gray-200 dark:border-gray-600 animate-in fade-in">
+          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full bg-white dark:bg-gray-800 shadow-lg border-2 border-gray-200 dark:border-gray-600 animate-in fade-in">
             <p className={`text-3xl font-bold bg-gradient-to-r ${gradientColors} bg-clip-text text-transparent`}>
               {displayPercentaje.toFixed(1)}%
             </p>
