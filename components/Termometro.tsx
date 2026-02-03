@@ -59,7 +59,7 @@ export default function Termometro({ userId }: { userId: number }) {
   const isPerson1 = userId === 1;
   const gradientColors = isPerson1
     ? "from-blue-500 to-sky-400"
-    : "from-pink-500 to-rose-400";
+    : "from-pink-400 to-rose-400";
 
   return (
     <div className="flex flex-col items-center p-12">
