@@ -88,10 +88,10 @@ export default function Termometro({ userId }: { userId: number }) {
 
         {/* Info debajo */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-200 font-semibold">
+          <p className="text-lg text-gray-600 dark:text-gray-200 font-semibold">
             ${objetivoActual.toLocaleString("es-CO")}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Objetivo</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Objetivo</p>
         </div>
       </div>
     </div>

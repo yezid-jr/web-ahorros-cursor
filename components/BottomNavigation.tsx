@@ -86,11 +86,11 @@ export default function BottomNavigation({
                 className="relative z-10 transition-all duration-300"
                 style={{
                   width: isActive
-                    ? "clamp(30px, 5vw, 38px)"
-                    : "clamp(28px, 5vw, 35px)",
+                    ? "clamp(36px, 6vw, 44px)"
+                    : "clamp(34px, 6vw, 41px)",
                   height: isActive
-                    ? "clamp(30px, 5vw, 38px)"
-                    : "clamp(28px, 5vw, 35px)",
+                    ? "clamp(36px, 6vw, 44px)"
+                    : "clamp(34px, 6vw, 41px)",
                   fill: getIconColor(isActive),
                   stroke: getIconColor(isActive),
                 }}
