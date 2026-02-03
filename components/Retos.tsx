@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { addSeconds, differenceInSeconds } from "date-fns";
-import TargetIcon from "@/components/ui/TargetIcon";
 import RetosIcon from "@/public/calendar-clock.svg";
 
 import API_URL from "@/lib/api";
@@ -475,7 +474,7 @@ export default function Retos({ userId }: { userId: number }) {
 
 
             <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-              Próximo Reto Automático
+              Próximo Reto
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {getProximaFechaReto()}
