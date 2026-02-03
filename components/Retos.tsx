@@ -2,18 +2,27 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { isAfter, addSeconds, differenceInSeconds } from "date-fns";
+import { addSeconds, differenceInSeconds } from "date-fns";
+import TargetIcon from "@/components/ui/TargetIcon";
+import RetosIcon from "@/public/calendar-clock.svg";
 
 import API_URL from "@/lib/api";
 
 interface Reto {
   id: number;
   description: string;
-  date: string;
+  tipo: string;
+  date: string | null;
   completed_user1: boolean;
   completed_user2: boolean;
   penitencia_applied: boolean;
-  tipo?: string;
+}
+
+interface ProximoRetoInfo {
+  next_activation_date: string;
+  activation_type: string;
+  retos_disponibles: number;
+  automatic_activation: boolean;
 }
 
 export default function Retos({ userId }: { userId: number }) {
@@ -25,33 +34,72 @@ export default function Retos({ userId }: { userId: number }) {
   const [retosDisponibles, setRetosDisponibles] = useState<number>(0);
   const [user1, setUser1] = useState<any>(null);
   const [user2, setUser2] = useState<any>(null);
+  const [proximoRetoInfo, setProximoRetoInfo] = useState<ProximoRetoInfo | null>(null);
+  const [nextRetoCountdown, setNextRetoCountdown] = useState<number>(0);
 
   useEffect(() => {
     fetchRetos();
     checkRetoActual();
     fetchRetosDisponibles();
+    fetchProximoRetoInfo();
     fetchUsers();
-    
+
+    // Actualizar cada minuto
     const interval = setInterval(() => {
       fetchRetos();
       checkRetoActual();
+      fetchProximoRetoInfo();
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, []);
+  const [isDark, setIsDark] = useState(false);
 
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+    checkDarkMode();
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+
+  // Countdown para el próximo reto automático
+  useEffect(() => {
+    if (!proximoRetoInfo) return;
+
+    const calcularCountdown = () => {
+      const proximaFecha = new Date(proximoRetoInfo.next_activation_date);
+      const ahora = new Date();
+      const diferencia = differenceInSeconds(proximaFecha, ahora);
+      setNextRetoCountdown(Math.max(0, diferencia));
+    };
+
+    calcularCountdown();
+    const timer = setInterval(calcularCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [proximoRetoInfo]);
+
+  // Countdown del reto actual (24 horas)
   useEffect(() => {
     if (!retoActual || !retoActual.date) return;
 
     const calcularTiempo = () => {
-      const tiempoLimite = addSeconds(new Date(retoActual.date), 85000); // 24 horas = 86400 segundos
+      const tiempoLimite = addSeconds(new Date(retoActual.date!), 86400); // 24 horas
       const ahora = new Date();
       const diferencia = differenceInSeconds(tiempoLimite, ahora);
 
       if (diferencia <= 0) {
         setTimeRemaining(0);
-        
-        if ((!retoActual.completed_user1 || !retoActual.completed_user2) && !penitencia && !retoActual.penitencia_applied) {
+
+        if ((!retoActual.completed_user1 || !retoActual.completed_user2) &&
+          !penitencia &&
+          !retoActual.penitencia_applied) {
           fetchPenitenciaAleatoria();
           aplicarPenitencia(retoActual.id);
         }
@@ -83,6 +131,15 @@ export default function Retos({ userId }: { userId: number }) {
     }
   };
 
+  const fetchProximoRetoInfo = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/retos/proximo`);
+      setProximoRetoInfo(response.data);
+    } catch (error) {
+      console.error("Error fetching próximo reto info:", error);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       const user1Response = await axios.get(`${API_URL}/users/1`);
@@ -97,10 +154,10 @@ export default function Retos({ userId }: { userId: number }) {
   const checkRetoActual = async () => {
     try {
       const response = await axios.get(`${API_URL}/retos/actual`);
-      
+
       if (response.data.reto) {
         setRetoActual(response.data.reto);
-        
+
         if (response.data.reto.penitencia_applied && !penitencia) {
           fetchPenitenciaAleatoria();
         }
@@ -133,7 +190,7 @@ export default function Retos({ userId }: { userId: number }) {
   const activarRetoDePrueba = async () => {
     try {
       const response = await axios.post(`${API_URL}/retos/activar`);
-      
+
       if (response.data.message?.includes("Ya existe")) {
         alert("Ya existe un reto activo");
       } else {
@@ -159,15 +216,15 @@ export default function Retos({ userId }: { userId: number }) {
       const response = await axios.post(
         `${API_URL}/retos/${retoActual.id}/complete?user_id=${userId}`
       );
-      
+
       setRetoActual(response.data.reto);
-      
+
       if (response.data.ambos_completados) {
         setTimeout(() => {
           alert("¡Felicitaciones! Ambos completaron el reto 🎉");
         }, 500);
       }
-      
+
       fetchRetos();
     } catch (error: any) {
       if (error.response?.status === 400) {
@@ -207,7 +264,37 @@ export default function Retos({ userId }: { userId: number }) {
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Filtrar historial: excluir el reto actual y retos sin fecha
+  const formatearCountdownLargo = (segundos: number) => {
+    const dias = Math.floor(segundos / 86400);
+    const horas = Math.floor((segundos % 86400) / 3600);
+    const minutos = Math.floor((segundos % 3600) / 60);
+    const secs = segundos % 60;
+
+    if (dias > 0) {
+      return `${dias}d ${horas}h ${minutos}m ${secs}s`;
+    } else if (horas > 0) {
+      return `${horas}h ${minutos}m ${secs}s`;
+    } else if (minutos > 0) {
+      return `${minutos}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
+
+  const getProximaFechaReto = () => {
+    if (!proximoRetoInfo) return "Calculando...";
+
+    const fecha = new Date(proximoRetoInfo.next_activation_date);
+    return fecha.toLocaleDateString("es-CO", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+  // Filtrar historial
   const retosHistorial = retos.filter(
     (reto) => reto.id !== retoActual?.id && reto.date !== null
   );
@@ -220,30 +307,36 @@ export default function Retos({ userId }: { userId: number }) {
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
           Retos
         </h2>
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          {retosDisponibles} disponibles
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
+            🤖 Automático
+          </span>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {retosDisponibles} en pool
+          </div>
         </div>
       </div>
 
-      {!retoActual && (
+      {/* Botón manual (solo para pruebas) */}
+      {/* {!retoActual && (
         <button
           onClick={activarRetoDePrueba}
           disabled={retosDisponibles === 0}
-          className={`w-full mb-4 font-semibold py-3 px-6 rounded-xl transition-all duration-200 ${
-            retosDisponibles === 0
-              ? "bg-gray-400 text-gray-600 cursor-not-allowed"
-              : "bg-purple-500 hover:bg-purple-600 text-white"
-          }`}
+          className={`w-full mb-4 font-semibold py-3 px-6 rounded-xl transition-all duration-200 ${retosDisponibles === 0
+              ? "bg-gray-400 dark:bg-gray-600 text-gray-600 dark:text-gray-300 cursor-not-allowed"
+              : "bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 text-white"
+            }`}
         >
-          {retosDisponibles === 0 ? "🎉 No hay más retos" : "🎲 Activar Reto Aleatorio"}
+          {retosDisponibles === 0 ? "" : "🎲 Activar Reto (Manual)"}
         </button>
-      )}
+      )} */}
 
       {retoActual ? (
+        // ============ RETO ACTIVO ============
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-6">
           <div className="text-center mb-4">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Reto del {new Date(retoActual.date).toLocaleDateString("es-CO", {
+              Reto del {new Date(retoActual.date!).toLocaleDateString("es-CO", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
@@ -251,43 +344,39 @@ export default function Retos({ userId }: { userId: number }) {
                 minute: "2-digit"
               })}
             </p>
-            
+
             {retoActual.tipo && (
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 ${
-                retoActual.tipo === "ahorro"
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                  : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-              }`}>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 ${retoActual.tipo === "ahorro"
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                }`}>
                 {retoActual.tipo === "ahorro" ? "💰 Ahorro" : "🎁 Gratis"}
               </span>
             )}
-            
+
             <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
               {retoActual.description}
             </h3>
 
             <div
-              className={`mb-4 p-3 rounded-lg ${
-                timeRemaining <= 0
-                  ? "bg-red-100 dark:bg-red-900/30"
-                  : "bg-blue-100 dark:bg-blue-900/30"
-              }`}
+              className={`mb-4 p-3 rounded-lg ${timeRemaining <= 0
+                ? "bg-red-100 dark:bg-red-900/30"
+                : "bg-blue-100 dark:bg-blue-900/30"
+                }`}
             >
               <p
-                className={`text-sm font-semibold ${
-                  timeRemaining <= 0
-                    ? "text-red-600 dark:text-red-300"
-                    : "text-blue-600 dark:text-blue-300"
-                }`}
+                className={`text-sm font-semibold ${timeRemaining <= 0
+                  ? "text-red-600 dark:text-red-300"
+                  : "text-blue-600 dark:text-blue-300"
+                  }`}
               >
                 {timeRemaining <= 0 ? "⏰ Tiempo agotado" : "⏱️ Tiempo restante"}
               </p>
               <p
-                className={`text-2xl font-bold ${
-                  timeRemaining <= 0
-                    ? "text-red-700 dark:text-red-200"
-                    : "text-blue-700 dark:text-blue-200"
-                }`}
+                className={`text-2xl font-bold ${timeRemaining <= 0
+                  ? "text-red-700 dark:text-red-200"
+                  : "text-blue-700 dark:text-blue-200"
+                  }`}
               >
                 {formatearTiempo(timeRemaining)}
               </p>
@@ -321,11 +410,10 @@ export default function Retos({ userId }: { userId: number }) {
             <button
               onClick={handleCompleteReto}
               disabled={timeRemaining <= 0 || isSubmitting}
-              className={`w-full font-semibold py-3 px-6 rounded-xl transition-all duration-200 ${
-                timeRemaining <= 0 || isSubmitting
-                  ? "bg-gray-400 dark:bg-gray-600 text-gray-600 dark:text-gray-300 cursor-not-allowed"
-                  : "bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white"
-              }`}
+              className={`w-full font-semibold py-3 px-6 rounded-xl transition-all duration-200 ${timeRemaining <= 0 || isSubmitting
+                ? "bg-gray-400 dark:bg-gray-600 text-gray-600 dark:text-gray-300 cursor-not-allowed"
+                : "bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white"
+                }`}
             >
               {isSubmitting ? "Procesando..." : "Marcar como Completado"}
             </button>
@@ -370,19 +458,55 @@ export default function Retos({ userId }: { userId: number }) {
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center">
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            No hay retos activos en este momento.
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-500">
-            Los retos normalmente aparecen el día 1 y 15 de cada mes.
-            <br />
-            Usa el botón de arriba para activar uno de prueba.
-          </p>
+        // ============ COUNTDOWN PRÓXIMO RETO ============
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center mb-6">
+          <div className="mb-4">
+            <div className="inline-flex items-center justify-center w-18 h-18 ">
+              <RetosIcon
+                className="transition-colors duration-300"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  fill: isDark ? "#d8b4fe" : "#7c3aed",   // purple-300 / purple-600
+                  stroke: isDark ? "#d8b4fe" : "#7c3aed",
+                }}
+              />
+            </div>
+
+
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+              Próximo Reto Automático
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {getProximaFechaReto()}
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-r from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-blue-900/30 rounded-xl p-6 mb-4">
+            <p className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-2">
+              ⏳ Tiempo restante
+            </p>
+            <p className="text-3xl font-bold text-purple-900 dark:text-purple-100 mb-2">
+              {formatearCountdownLargo(nextRetoCountdown)}
+            </p>
+            {proximoRetoInfo && (
+              <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
+                <p className="text-xs text-purple-600 dark:text-purple-400">
+                  {proximoRetoInfo.retos_disponibles} retos disponibles en el pool
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Los retos se activan automáticamente el día <strong>1</strong> y <strong>15</strong> de cada mes a las 12:01 AM.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Historial de retos - FILTRADO */}
+      {/* ============ HISTORIAL DE RETOS ============ */}
       {retosHistorial.length > 0 && (
         <div className="mt-6">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -396,14 +520,13 @@ export default function Retos({ userId }: { userId: number }) {
               >
                 <div className="flex justify-between items-start mb-1">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(reto.date).toLocaleDateString("es-CO")}
+                    {reto.date && new Date(reto.date).toLocaleDateString("es-CO")}
                   </p>
                   {reto.tipo && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      reto.tipo === "ahorro"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                    }`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${reto.tipo === "ahorro"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                      }`}>
                       {reto.tipo === "ahorro" ? "💰" : "🎁"}
                     </span>
                   )}
@@ -413,20 +536,18 @@ export default function Retos({ userId }: { userId: number }) {
                 </p>
                 <div className="flex items-center space-x-4">
                   <span
-                    className={`text-xs ${
-                      reto.completed_user1
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-gray-400"
-                    }`}
+                    className={`text-xs ${reto.completed_user1
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-gray-400"
+                      }`}
                   >
                     {user1?.name || "P1"}: {reto.completed_user1 ? "✓" : "○"}
                   </span>
                   <span
-                    className={`text-xs ${
-                      reto.completed_user2
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-gray-400"
-                    }`}
+                    className={`text-xs ${reto.completed_user2
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-gray-400"
+                      }`}
                   >
                     {user2?.name || "P2"}: {reto.completed_user2 ? "✓" : "○"}
                   </span>

@@ -9,6 +9,7 @@ import Montos from "@/components/Montos";
 import Objetivos from "@/components/Objetivos";
 import Retos from "@/components/Retos";
 import ThemeToggle from "@/components/ButtonDarkTheme";
+import BottomNavigation from "@/components/BottomNavigation";
 import GraficoIcon from "@/public/grafico-icon.svg";
 import ChonchitoIcon from "@/public/chonchito-icon.svg";
 import TermometroIcon from "@/public/termometro-vacio-icon.svg";
@@ -18,77 +19,6 @@ import RetosIcon from "@/public/retos-icon.svg";
 import API_URL from "@/lib/api";
 
 type View = "dashboard" | "estadisticas" | "montos" | "objetivos" | "retos";
-
-function BottomNavigation({ currentView, setCurrentView, buttonColorClass, textColorClass, bgColorClass }: any) {
-  const isPerson1 = buttonColorClass === "bg-person1-color";
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // Detectar si estamos en dark mode
-    const checkDarkMode = () => {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    };
-
-    checkDarkMode();
-
-    // Observar cambios en la clase dark
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-
-    return () => observer.disconnect();
-  }, []);
-
-  const navItems = [
-    { id: "estadisticas" as View, label: "Estadísticas", icon: GraficoIcon },
-    { id: "montos" as View, label: "Montos", icon: ChonchitoIcon },
-    { id: "dashboard" as View, label: "Dashboard", icon: TermometroIcon },
-    { id: "objetivos" as View, label: "Objetivos", icon: FlechaIcon },
-    { id: "retos" as View, label: "Retos", icon: RetosIcon },
-  ];
-
-  return (
-    <nav className={`fixed bottom-0 left-0 right-0 ${bgColorClass} border-t border-gray-300 dark:border-gray-700 shadow-2xl`}>
-      <div className="container mx-auto px-4 flex justify-around items-center h-20">
-        {navItems.map((item) => {
-          const IconComponent = item.icon;
-          const isActive = currentView === item.id;
-          
-          // Colores que cambian según el tema
-          let iconColor = "#ffffff"; // Activo siempre es blanco
-          if (!isActive) {
-            if (isDark) {
-              // Colores claros para dark mode
-              iconColor = isPerson1 ? "#2b4e78" : "#595959"; // Azul/Rosa más claros
-            } else {
-              // Colores normales para light mode
-              iconColor = isPerson1 ? "#7a7a7a" : "#ec93bf"; // gris/Rosa
-            }
-          }
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className={`flex flex-col items-center justify-center py-2 px-4 rounded-lg transition-all duration-300 ${
-                isActive
-                  ? `${buttonColorClass} text-white shadow-lg scale-110`
-                  : `${textColorClass} hover:${buttonColorClass} hover:text-white hover:scale-105`
-              }`}
-              title={item.label}
-            >
-              <IconComponent
-                className={`transition-all duration-300 ${
-                  isActive ? "w-10 h-10" : "w-8 h-8 hover:w-9 hover:h-9"
-                }`}
-                style={{ fill: iconColor, stroke: iconColor }}
-              />
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
 
 function DashboardContent() {
   const searchParams = useSearchParams();

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-
 import API_URL from "@/lib/api";
 
 interface Monto {
@@ -34,83 +33,61 @@ export default function Montos({ userId }: { userId: number }) {
   };
 
   const handleSelectMonto = async (montoId: number) => {
-  try {
-    
-    await axios.put(`${API_URL}/montos/${montoId}/select?user_id=${userId}`);
-    
-    const monto = montos.find((m) => m.id === montoId);
-    
-    if (monto) {
-      const ahorroData = {
-        user_id: userId,
-        monto_id: montoId,
-        amount: monto.amount,
-      };
-      
-      const response = await axios.post(`${API_URL}/ahorros`, ahorroData);
-      console.log("Respuesta del servidor:", response.data);
-    } else {
-      console.error("ERROR: No se encontró el monto");
-    }
+    try {
+      await axios.put(
+        `${API_URL}/montos/${montoId}/select?user_id=${userId}`
+      );
 
-    setSelectedMonto(montoId);
-    setTimeout(() => {
-      setSelectedMonto(null);
-      fetchMontos();
-    }, 2000);
-  } catch (error) {
-    console.error("Error:", error);
-    if (axios.isAxiosError(error)) {
-      console.error("Response data:", error.response?.data);
-      console.error("Status:", error.response?.status);
+      const monto = montos.find((m) => m.id === montoId);
+
+      if (monto) {
+        await axios.post(`${API_URL}/ahorros`, {
+          user_id: userId,
+          monto_id: montoId,
+          amount: monto.amount,
+        });
+      }
+
+      setSelectedMonto(montoId);
+      setTimeout(() => {
+        setSelectedMonto(null);
+        fetchMontos();
+      }, 2000);
+    } catch (error) {
+      console.error("Error:", error);
     }
-  }
-};
+  };
 
   const handleCreateAndSelectMonto = async (amount: number) => {
-  try {
-    
-    // Crear monto
-    const createResponse = await axios.post(`${API_URL}/montos`, {
-      amount,
-      user_id: userId,
-    });
-    
-    const newMonto = createResponse.data;
-    
-    // Marcar como seleccionado
-    await axios.put(`${API_URL}/montos/${newMonto.id}/select?user_id=${userId}`);
-    
-    // Crear ahorro directamente con los datos del monto recién creado
-    const ahorroData = {
-      user_id: userId,
-      monto_id: newMonto.id,
-      amount: newMonto.amount,
-    };
-    
-    const ahorroResponse = await axios.post(`${API_URL}/ahorros`, ahorroData);
-    console.log("Ahorro creado:", ahorroResponse.data);
-    
-    // Mostrar confirmación
-    setSelectedMonto(newMonto.id);
-    setTimeout(() => {
-      setSelectedMonto(null);
-      fetchMontos();
-    }, 2000);
-    
-  } catch (error) {
-    console.error("Error:", error);
-    if (axios.isAxiosError(error)) {
-      console.error("Response data:", error.response?.data);
-      console.error("Status:", error.response?.status);
-    }
-  }
-};
+    try {
+      const createResponse = await axios.post(`${API_URL}/montos`, {
+        amount,
+        user_id: userId,
+      });
 
-  // Agrupar montos por selección
+      const newMonto = createResponse.data;
+
+      await axios.put(
+        `${API_URL}/montos/${newMonto.id}/select?user_id=${userId}`
+      );
+
+      await axios.post(`${API_URL}/ahorros`, {
+        user_id: userId,
+        monto_id: newMonto.id,
+        amount: newMonto.amount,
+      });
+
+      setSelectedMonto(newMonto.id);
+      setTimeout(() => {
+        setSelectedMonto(null);
+        fetchMontos();
+      }, 2000);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
   const montosSeleccionados = montos.filter((m) => m.selected);
-  // Montos disponibles son los que no han sido seleccionados aún
-  const montosDisponibles = MONTOS_DISPONIBLES;
 
   const getMontoColor = (monto: Monto) => {
     if (monto.user_id === 1) return "bg-blue-500";
@@ -119,60 +96,79 @@ export default function Montos({ userId }: { userId: number }) {
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-4xl mx-auto px-4">
       <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">
         Montos
       </h2>
 
-      {/* Montos seleccionados */}
-      {montosSeleccionados.length > 0 && (
-        <div className="mb-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Montos seleccionados */}
+        <div>
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Montos Seleccionados
+            Seleccionados
           </h3>
-          <div className="grid grid-cols-2 gap-3">
-            {montosSeleccionados.map((monto) => (
-              <div
-                key={monto.id}
-                className={`${getMontoColor(monto)} text-white rounded-xl p-4 text-center shadow-lg`}
+
+          {montosSeleccionados.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {montosSeleccionados.map((monto) => (
+                <div
+                  key={monto.id}
+                  className={`${getMontoColor(
+                    monto
+                  )} text-white rounded-lg px-4 py-3 min-w-[140px] text-center shadow`}
+                >
+                  <p className="text-lg font-semibold">
+                    ${monto.amount.toLocaleString("es-CO")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No hay montos seleccionados
+            </p>
+          )}
+        </div>
+
+        {/* Montos disponibles */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Montos
+          </h3>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {MONTOS_DISPONIBLES.map((amount) => (
+              <button
+                key={amount}
+                onClick={() => handleCreateAndSelectMonto(amount)}
+                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 rounded-lg px-3 py-3 text-center transition-all duration-200 hover:scale-[1.02] shadow-sm"
               >
-                <p className="text-2xl font-bold">
-                  ${monto.amount.toLocaleString("es-CO")}
+                <p className="text-base font-semibold text-gray-800 dark:text-white">
+                  ${amount.toLocaleString("es-CO")}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
-      )}
-
-      {/* Montos disponibles */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
-          Seleccionar Monto
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          {montosDisponibles.map((amount) => (
-            <button
-              key={amount}
-              onClick={() => handleCreateAndSelectMonto(amount)}
-              className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 rounded-xl p-4 text-center transition-all duration-200 transform hover:scale-105 shadow-md"
-            >
-              <p className="text-xl font-bold text-gray-800 dark:text-white">
-                ${amount.toLocaleString("es-CO")}
-              </p>
-            </button>
-          ))}
-        </div>
       </div>
 
+      {/* Modal confirmación */}
       {selectedMonto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 text-center">
-            <p className="text-2xl font-bold text-green-600 mb-2">✓</p>
-            <p className="text-lg text-gray-800">Monto registrado exitosamente</p>
+        <div className="fixed top-6 right-6 z-50 animate-slide-in">
+          <div className="flex items-center gap-3 bg-white dark:bg-gray-900 border border-green-200 dark:border-green-800 rounded-xl px-5 py-3 shadow-lg">
+            <span className="text-green-600 text-xl">✓</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white">
+                Monto registrado
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Ahorro agregado correctamente
+              </p>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

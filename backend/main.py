@@ -5,11 +5,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, date
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from sqlalchemy import and_, or_, func
 from random import choice
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
 
 
 # Database setup
@@ -52,10 +54,23 @@ class Reto(Base):
     __tablename__ = "retos"
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String)
-    date = Column(DateTime)
+    tipo = Column(String, default="ahorro")  # "ahorro" o "gratis"
+    date = Column(DateTime, nullable=True)  # NULL = disponible, con fecha = usado/activo
     completed_user1 = Column(Boolean, default=False)
     completed_user2 = Column(Boolean, default=False)
     penitencia_applied = Column(Boolean, default=False)
+
+class Penitencia(Base):
+    __tablename__ = "penitencias"
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String, nullable=False)
+
+class RetoSchedule(Base):
+    """Tabla para trackear cuándo se activó el último reto automático"""
+    __tablename__ = "reto_schedule"
+    id = Column(Integer, primary_key=True, index=True)
+    last_activation_date = Column(DateTime, nullable=False)
+    activation_type = Column(String)  # "day_1" o "day_15"
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -101,7 +116,8 @@ class ObjetivoResponse(BaseModel):
 class RetoResponse(BaseModel):
     id: int
     description: str
-    date: datetime
+    tipo: str
+    date: Optional[datetime]
     completed_user1: bool
     completed_user2: bool
     penitencia_applied: bool
@@ -112,12 +128,6 @@ class EstadisticasResponse(BaseModel):
     total_general: float
     objetivo_actual: float
     progreso_porcentaje: float
-
-class Penitencia(Base):
-    __tablename__ = "penitencias"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    description = Column(String, nullable=False)
 
 # FastAPI app
 app = FastAPI(title="Ahorro 2026 API")
@@ -139,7 +149,114 @@ def get_db():
     finally:
         db.close()
 
-# Endpoints
+# ============================================
+# FUNCIÓN PARA ACTIVAR RETOS AUTOMÁTICAMENTE
+# ============================================
+def activar_reto_automatico():
+    """Función que se ejecuta automáticamente el día 1 y 15"""
+    db = SessionLocal()
+    try:
+        now = datetime.now()
+        activation_type = "day_1" if now.day == 1 else "day_15"
+        
+        # Verificar si ya se activó un reto hoy
+        ultima_activacion = db.query(RetoSchedule).filter(
+            RetoSchedule.activation_type == activation_type
+        ).order_by(RetoSchedule.last_activation_date.desc()).first()
+        
+        # Si ya se activó hoy, no hacer nada
+        if ultima_activacion:
+            if ultima_activacion.last_activation_date.date() == now.date():
+                print(f"✅ Reto ya fue activado hoy ({activation_type})")
+                return
+        
+        # Verificar si ya existe un reto activo
+        reto_activo = db.query(Reto).filter(
+            and_(
+                Reto.date.isnot(None),
+                Reto.date >= now - timedelta(hours=24)
+            )
+        ).first()
+        
+        if reto_activo:
+            print(f"⚠️ Ya existe un reto activo, no se activará otro")
+            return
+        
+        # Obtener retos disponibles (sin fecha asignada)
+        retos_disponibles = db.query(Reto).filter(Reto.date.is_(None)).all()
+        
+        if not retos_disponibles:
+            print(f"❌ No hay retos disponibles en el pool")
+            return
+        
+        # Seleccionar uno aleatorio
+        reto_seleccionado = choice(retos_disponibles)
+        
+        # Activarlo
+        reto_seleccionado.date = now
+        reto_seleccionado.completed_user1 = False
+        reto_seleccionado.completed_user2 = False
+        reto_seleccionado.penitencia_applied = False
+        
+        # Registrar la activación
+        nueva_activacion = RetoSchedule(
+            last_activation_date=now,
+            activation_type=activation_type
+        )
+        db.add(nueva_activacion)
+        
+        db.commit()
+        print(f"🎯 Reto activado automáticamente: {reto_seleccionado.description}")
+        
+    except Exception as e:
+        print(f"❌ Error al activar reto automático: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+# ============================================
+# CONFIGURAR SCHEDULER
+# ============================================
+scheduler = BackgroundScheduler()
+
+# Zona horaria de Colombia
+colombia_tz = pytz.timezone('America/Bogota')
+
+# Programar para el día 1 de cada mes a las 00:01
+scheduler.add_job(
+    activar_reto_automatico,
+    CronTrigger(day=1, hour=0, minute=1, timezone=colombia_tz),
+    id='activar_reto_dia_1',
+    name='Activar reto automático día 1'
+)
+
+# Programar para el día 15 de cada mes a las 00:01
+scheduler.add_job(
+    activar_reto_automatico,
+    CronTrigger(day=15, hour=0, minute=1, timezone=colombia_tz),
+    id='activar_reto_dia_15',
+    name='Activar reto automático día 15'
+)
+
+# Iniciar el scheduler
+scheduler.start()
+
+# Eventos de inicio y cierre
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Servidor iniciado")
+    print("⏰ Scheduler de retos activado")
+    print("📅 Próximas activaciones automáticas: día 1 y 15 de cada mes")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler.shutdown()
+    print("🛑 Scheduler detenido")
+
+# ============================================
+# ENDPOINTS
+# ============================================
+
 @app.get("/")
 def read_root():
     return {"message": "Ahorro 2026 API"}
@@ -181,7 +298,6 @@ def select_monto(monto_id: int, user_id: int = Query(...), db: Session = Depends
     if not monto:
         raise HTTPException(status_code=404, detail="Monto not found")
     
-    # Marcar como seleccionado
     monto.selected = True
     db.commit()
     
@@ -202,7 +318,7 @@ def create_ahorro(ahorro: AhorroCreate, db: Session = Depends(get_db)):
 @app.get("/ahorros", response_model=List[AhorroResponse])
 def get_ahorros(db: Session = Depends(get_db)):
     return db.query(Ahorro).all()
-# Agrega este endpoint temporal para debug
+
 @app.get("/debug/ahorros")
 def debug_ahorros(db: Session = Depends(get_db)):
     ahorros = db.query(Ahorro).all()
@@ -213,7 +329,6 @@ def debug_ahorros(db: Session = Depends(get_db)):
 
 @app.post("/test/add-ahorro")
 def test_add_ahorro(db: Session = Depends(get_db)):
-    # Crear un ahorro de prueba
     ahorro = Ahorro(
         user_id=1,
         monto_id=1,
@@ -226,15 +341,12 @@ def test_add_ahorro(db: Session = Depends(get_db)):
 
 @app.get("/estadisticas", response_model=EstadisticasResponse)
 def get_estadisticas(db: Session = Depends(get_db)):
-    # Total general
     total_general_result = db.query(func.sum(Ahorro.amount)).scalar()
     total_general = float(total_general_result) if total_general_result is not None else 0.0
     
-    # Total del mes actual - ARREGLADO para SQLite
     now = datetime.now()
     primer_dia_mes = datetime(now.year, now.month, 1)
     
-    # Calcular el último día del mes
     if now.month == 12:
         ultimo_dia_mes = datetime(now.year + 1, 1, 1)
     else:
@@ -246,11 +358,9 @@ def get_estadisticas(db: Session = Depends(get_db)):
     ).scalar()
     total_mes = float(total_mes_result) if total_mes_result is not None else 0.0
     
-    # Objetivo del mes
     objetivo_mes = 2000000.0
     faltante_mes = max(0.0, objetivo_mes - total_mes)
     
-    # Objetivo actual basado en el total general
     objetivos = [1000000, 2000000, 3000000, 5000000, 7000000, 12000000, 20000000]
     objetivo_actual = 20000000.0
     for obj in objetivos:
@@ -270,11 +380,8 @@ def get_estadisticas(db: Session = Depends(get_db)):
 
 @app.get("/objetivos", response_model=List[ObjetivoResponse])
 def get_objetivos(db: Session = Depends(get_db)):
-
-    # 1️⃣ Obtener objetivos existentes
     objetivos = db.query(Objetivo).all()
 
-    # 2️⃣ Si no existen, crearlos
     if not objetivos:
         objetivos_amounts = [
             1_000_000,
@@ -292,10 +399,8 @@ def get_objetivos(db: Session = Depends(get_db)):
         db.commit()
         objetivos = db.query(Objetivo).all()
 
-    # 3️⃣ Calcular total ahorrado
     total_general = db.query(func.sum(Ahorro.amount)).scalar() or 0
 
-    # 4️⃣ Marcar objetivos completados
     for objetivo in objetivos:
         if total_general >= objetivo.amount and not objetivo.completed:
             objetivo.completed = True
@@ -307,18 +412,15 @@ def get_objetivos(db: Session = Depends(get_db)):
 
 @app.get("/retos", response_model=List[RetoResponse])
 def get_retos(db: Session = Depends(get_db)):
-    """Obtener historial de retos COMPLETADOS o EXPIRADOS (solo los que fueron activados y ya terminaron)"""
+    """Obtener historial de retos COMPLETADOS o EXPIRADOS"""
     now = datetime.now()
     
-    # Obtener retos que:
-    # 1. Tienen fecha asignada (fueron activados)
-    # 2. Y que ya NO son el reto actual (pasaron más de 24 horas O fueron completados por ambos)
     retos_historial = db.query(Reto).filter(
         and_(
-            Reto.date.isnot(None),  # Fueron activados
+            Reto.date.isnot(None),
             or_(
-                Reto.date < now - timedelta(hours=24),  # Ya pasaron 24 horas
-                and_(  # O ambos completaron
+                Reto.date < now - timedelta(hours=24),
+                and_(
                     Reto.completed_user1 == True,
                     Reto.completed_user2 == True
                 )
@@ -333,11 +435,10 @@ def get_reto_actual(db: Session = Depends(get_db)):
     """Obtener el reto activo actual (si existe)"""
     now = datetime.now()
     
-    # Buscar reto activo: creado hace menos de 24 horas y no completado por ambos
     reto = db.query(Reto).filter(
         and_(
-            Reto.date.isnot(None),  # Tiene fecha asignada
-            Reto.date >= now - timedelta(hours=24),  # Creado hace menos de 24 horas
+            Reto.date.isnot(None),
+            Reto.date >= now - timedelta(hours=24),
             or_(
                 Reto.completed_user1 == False,
                 Reto.completed_user2 == False
@@ -353,23 +454,43 @@ def get_reto_actual(db: Session = Depends(get_db)):
 @app.get("/retos/disponibles")
 def get_retos_disponibles(db: Session = Depends(get_db)):
     """Obtener retos que aún no han sido usados"""
-    # Obtener IDs de retos ya usados (que tienen fecha)
-    retos_usados_ids = db.query(Reto.id).filter(Reto.date.isnot(None)).all()
-    retos_usados_ids = [r[0] for r in retos_usados_ids]
-    
-    # Obtener retos disponibles (sin fecha)
-    retos_disponibles = db.query(Reto).filter(
-        and_(
-            Reto.date.is_(None),
-            ~Reto.id.in_(retos_usados_ids) if retos_usados_ids else True
-        )
-    ).all()
-    
+    retos_disponibles = db.query(Reto).filter(Reto.date.is_(None)).all()
     return {"retos_disponibles": retos_disponibles, "total": len(retos_disponibles)}
+
+@app.get("/retos/proximo")
+def get_proximo_reto_info(db: Session = Depends(get_db)):
+    """Obtener información sobre el próximo reto automático"""
+    now = datetime.now()
+    current_day = now.day
+    
+    # Calcular próxima fecha de activación
+    if current_day < 1:
+        next_date = datetime(now.year, now.month, 1, 0, 0, 0)
+        tipo = "day_1"
+    elif current_day >= 1 and current_day < 15:
+        next_date = datetime(now.year, now.month, 15, 0, 0, 0)
+        tipo = "day_15"
+    else:
+        # Próximo mes, día 1
+        if now.month == 12:
+            next_date = datetime(now.year + 1, 1, 1, 0, 0, 0)
+        else:
+            next_date = datetime(now.year, now.month + 1, 1, 0, 0, 0)
+        tipo = "day_1"
+    
+    # Verificar si hay retos disponibles
+    retos_disponibles = db.query(Reto).filter(Reto.date.is_(None)).count()
+    
+    return {
+        "next_activation_date": next_date,
+        "activation_type": tipo,
+        "retos_disponibles": retos_disponibles,
+        "automatic_activation": True
+    }
 
 @app.post("/retos/activar")
 def activar_reto_aleatorio(db: Session = Depends(get_db)):
-    """Activar un reto aleatorio (asignarle fecha actual)"""
+    """Activar un reto manualmente (para pruebas)"""
     now = datetime.now()
     
     # Verificar si ya existe un reto activo
@@ -383,7 +504,7 @@ def activar_reto_aleatorio(db: Session = Depends(get_db)):
     if reto_activo:
         return {"message": "Ya existe un reto activo", "reto": reto_activo}
     
-    # Obtener retos disponibles (sin fecha asignada)
+    # Obtener retos disponibles
     retos_disponibles = db.query(Reto).filter(Reto.date.is_(None)).all()
     
     if not retos_disponibles:
@@ -392,7 +513,7 @@ def activar_reto_aleatorio(db: Session = Depends(get_db)):
     # Seleccionar uno aleatorio
     reto_seleccionado = choice(retos_disponibles)
     
-    # Activarlo asignándole la fecha actual
+    # Activarlo
     reto_seleccionado.date = now
     reto_seleccionado.completed_user1 = False
     reto_seleccionado.completed_user2 = False
@@ -401,15 +522,15 @@ def activar_reto_aleatorio(db: Session = Depends(get_db)):
     db.commit()
     db.refresh(reto_seleccionado)
     
-    return {"message": "Reto activado", "reto": reto_seleccionado}
+    return {"message": "Reto activado manualmente", "reto": reto_seleccionado}
 
 @app.post("/retos/crear")
 def crear_reto(description: str = Query(...), tipo: str = Query("ahorro"), db: Session = Depends(get_db)):
-    """Crear un nuevo reto en el pool (sin fecha asignada)"""
+    """Crear un nuevo reto en el pool"""
     reto = Reto(
         description=description,
         tipo=tipo,
-        date=None,  # Sin fecha = disponible para usar
+        date=None,
         completed_user1=False,
         completed_user2=False,
         penitencia_applied=False
@@ -426,7 +547,6 @@ def complete_reto(reto_id: int, user_id: int = Query(...), db: Session = Depends
     if not reto:
         raise HTTPException(status_code=404, detail="Reto not found")
     
-    # Verificar que el reto no haya expirado (24 horas)
     if reto.date:
         tiempo_limite = reto.date + timedelta(hours=24)
         if datetime.now() > tiempo_limite:
@@ -478,6 +598,7 @@ def get_penitencia_aleatoria(db: Session = Depends(get_db)):
 
 @app.post("/init")
 def init_db(db: Session = Depends(get_db)):
+    """Inicializar la base de datos con datos básicos"""
     # Crear usuarios si no existen
     user1 = db.query(User).filter(User.id == 1).first()
     if not user1:
@@ -499,3 +620,25 @@ def init_db(db: Session = Depends(get_db)):
     
     db.commit()
     return {"message": "Database initialized"}
+
+@app.get("/scheduler/status")
+def get_scheduler_status():
+    """Verificar el estado del scheduler"""
+    jobs = scheduler.get_jobs()
+    return {
+        "scheduler_running": scheduler.running,
+        "jobs": [
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": str(job.next_run_time) if job.next_run_time else None
+            }
+            for job in jobs
+        ]
+    }
+
+@app.post("/scheduler/test-activacion")
+def test_activacion_inmediata(db: Session = Depends(get_db)):
+    """Endpoint de prueba para activar el reto inmediatamente (simular el scheduler)"""
+    activar_reto_automatico()
+    return {"message": "Función de activación ejecutada manualmente"}
