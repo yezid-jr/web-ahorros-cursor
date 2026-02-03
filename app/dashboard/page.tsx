@@ -10,11 +10,6 @@ import Objetivos from "@/components/Objetivos";
 import Retos from "@/components/Retos";
 import ThemeToggle from "@/components/ButtonDarkTheme";
 import BottomNavigation from "@/components/BottomNavigation";
-import GraficoIcon from "@/public/grafico-icon.svg";
-import ChonchitoIcon from "@/public/chonchito-icon.svg";
-import TermometroIcon from "@/public/termometro-vacio-icon.svg";
-import FlechaIcon from "@/public/flecha-icon.svg";
-import RetosIcon from "@/public/retos-icon.svg";
 
 import API_URL from "@/lib/api";
 

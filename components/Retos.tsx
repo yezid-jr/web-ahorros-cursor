@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { addSeconds, differenceInSeconds } from "date-fns";
 import RetosIcon from "@/public/calendar-clock.svg";
+import TimeIcon from "@/public/timee-icon.svg";
 
 import API_URL from "@/lib/api";
 
@@ -482,9 +483,21 @@ export default function Retos({ userId }: { userId: number }) {
           </div>
 
           <div className="bg-gradient-to-r from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-blue-900/30 rounded-xl p-6 mb-4">
+            <div className="flex justify-center gap-1">
+              <TimeIcon
+                className="transition-colors duration-300"
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  fill: isDark ? "#d8b4fe" : "#7c3aed",   // purple-300 / purple-600
+                  stroke: isDark ? "#d8b4fe" : "#7c3aed",
+                }}
+              />
             <p className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-2">
-              ⏳ Tiempo restante
+              Tiempo restante
             </p>
+
+            </div>
             <p className="text-3xl font-bold text-purple-900 dark:text-purple-100 mb-2">
               {formatearCountdownLargo(nextRetoCountdown)}
             </p>

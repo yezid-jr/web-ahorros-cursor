@@ -46,7 +46,7 @@ export default function BottomNavigation({
     { id: "retos" as View, label: "Retos", icon: RetosIcon },
   ];
 
-  const userColor = isPerson1 ? "#93c5fd" : "#ec93bf";
+  const userColor = isPerson1 ? isDark ? "#6dc8b6" : "#1e40af" : isDark ? "#f9a8d4" : "#be185d";
 
   const getIconColor = (isActive: boolean) => {
     if (isActive) return userColor;

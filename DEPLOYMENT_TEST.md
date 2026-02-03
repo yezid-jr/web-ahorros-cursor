@@ -98,6 +98,6 @@ Verificar que el servidor inicie en `http://localhost:3000`
 ## Notas para Producción
 
 1. **Variables de Entorno**: Configurar `NEXT_PUBLIC_API_URL` en Vercel
-2. **Backend**: Desplegar en un servicio como Railway, Render, o Heroku
+2. **Backend**: Desplegar en un servicio como Railway, Render, o Heroku contraseña supabase: oktsdDcKAfAht97J
 3. **Base de Datos**: Considerar migrar de SQLite a PostgreSQL en producción
 4. **CORS**: Restringir orígenes permitidos en producción
