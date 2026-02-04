@@ -1,0 +1,9 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "docker-compose up --build",
+    "healthcheckPath": "/api/health"
+  }
+}
