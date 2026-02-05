@@ -50,7 +50,7 @@ function DashboardContent() {
           {/* Header */}
           <div className="relative text-center mb-10">
             <h1 className={`text-3xl font-bold ${textColorClass}`}>
-              Hola, {user?.name || ""}
+              Hola, {isPerson1 ? "Yezid" : "Yiss" || ""}
             </h1>
             <div>
               <p className={`mt-2 ${textColorClass}`}>
