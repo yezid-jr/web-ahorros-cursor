@@ -8,7 +8,7 @@
 # Si no tienes Git inicializado
 git init
 git add .
-git commit -m "Add Docker configuration for Railway deployment"
+git commit -m ""
 
 # Conectar con GitHub (reemplaza con tu repo)
 git remote add origin https://github.com/tu-usuario/web-ahorros-cursor-main.git

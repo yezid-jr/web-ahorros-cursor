@@ -22,6 +22,33 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
+### Docker
+
+Primero se debe tener Docker Desktop instalado en la máquina y ejecutarse el comando:
+
+```bash
+docker-compose up --build
+```
+
 ## Despliegue
 
-El frontend está configurado para desplegarse en Vercel.
+El despliegue se realizó en Railway.
+
+1. Ir a Railway
+ Ve a railway.app
+Login con GitHub
+2. Nuevo Proyecto
+"New Project" → "Deploy from GitHub repo"
+Selecciona yezid-jr/web-ahorros-cursor
+3. Variables de Entorno
+En Settings → Variables:
+
+NEXT_PUBLIC_API_URL=https://tu-app.railway.app
+DATABASE_URL=sqlite:///./ahorro.db
+PORT=8000
+4. Despliegue Automático
+Railway construirá las imágenes Docker
+Desplegará frontend y backend
+Te dará URL pública
+
+<!-- El frontend está configurado para desplegarse en Vercel. -->
