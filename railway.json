@@ -1,1 +1,1 @@
-{"build": {"builder": "NIXPACKS"}, "deploy": {"startCommand": "npm start", "port": 3000}}
+{"build": {"builder": "DOCKERFILE", "dockerfilePath": "Dockerfile", "dockerfileContext": "."}, "deploy": {"startCommand": "npm start", "port": 3000}}
