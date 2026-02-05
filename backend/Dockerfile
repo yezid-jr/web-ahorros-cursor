@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código fuente
 COPY . .
 
-# Exponer puerto
+# Exponer puerto (Railway asignará uno dinámicamente)
 EXPOSE 8000
 
-# Comando para ejecutar la aplicación
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando para ejecutar la aplicación usando PORT de Railway o 8000 por defecto
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
